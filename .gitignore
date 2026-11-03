@@ -4,3 +4,11 @@ dist/
 *.log
 .DS_Store
 Thumbs.db
+.agents/
+.chrome-qa/
+.codex/
+.cortex/
+.gemini/
+.impeccable/
+.local-main-preview/
+skills-lock.json

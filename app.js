@@ -8,6 +8,7 @@
   const architectureLayers = Array.from(document.querySelectorAll("[data-architecture-layer]"));
   const architectureStage = document.querySelector("[data-architecture-stage]");
   const architectureMark = document.querySelector("[data-architecture-mark]");
+  const heroButton = document.querySelector(".hero-actions .button-primary");
   const clientMarquee = document.querySelector("[data-client-marquee]");
   const clientTrack = document.querySelector("[data-client-track]");
   const processSteps = Array.from(document.querySelectorAll("[data-process-step]"));
@@ -82,7 +83,7 @@
     (context) => {
       const { mobile, desktop, wide, finePointer, reduceMotion } = context.conditions;
       if (reduceMotion) {
-        gsap.set("[data-reveal], [data-hero-item], .hero-line > span, [data-architecture-layer], [data-architecture-mark], [data-artifact-path], [data-artifact-node], [data-artifact-scan]", { clearProps: "all" });
+        gsap.set("[data-reveal], [data-hero-item], .hero-line > span, [data-architecture-layer], [data-architecture-mark], [data-artifact-path], [data-artifact-node], [data-artifact-scan], .case, .case-grid", { clearProps: "all" });
         return;
       }
       const cleanup = [];
@@ -91,52 +92,43 @@
       const heroTimeline = gsap.timeline({ defaults: { ease: "expo.out" } });
       heroTimeline
         .fromTo(".hero-line > span", { yPercent: 115, autoAlpha: 0, filter: "blur(8px)" }, { yPercent: 0, autoAlpha: 1, filter: "blur(0px)", duration: 0.78, stagger: 0.1, clearProps: "filter" })
-        .fromTo("[data-hero-word].is-active", { yPercent: 70, autoAlpha: 0 }, { yPercent: 0, autoAlpha: 1, duration: 0.68 }, "-=0.44")
-        .fromTo("[data-hero-item]", { x: -28, autoAlpha: 0 }, { x: 0, autoAlpha: 1, duration: 0.64, stagger: 0.08 }, "-=0.48")
-        .fromTo("[data-architecture-layer]", { y: 84, autoAlpha: 0, scale: 0.9 }, { y: 0, autoAlpha: 1, scale: 1, duration: 0.82, stagger: 0.09 }, "-=0.78")
-        .fromTo("[data-architecture-mark]", { scale: 0.64, autoAlpha: 0, rotation: -12 }, { scale: 1, autoAlpha: 1, rotation: 0, duration: 0.72 }, "-=0.56")
+        .fromTo("[data-hero-word].is-active", { yPercent: 70, autoAlpha: 0 }, { yPercent: 0, autoAlpha: 1, duration: 0.68, clearProps: "transform,opacity,visibility" }, "-=0.44")
+        .fromTo("[data-hero-item]", { x: -28, autoAlpha: 0 }, { x: 0, autoAlpha: 1, duration: 0.64, stagger: 0.08 }, "-=0.48");
+
+      if (!mobile && architectureLayers.length && architectureMark) {
+        heroTimeline
+          .fromTo("[data-architecture-layer]", { y: 84, autoAlpha: 0, scale: 0.9 }, { y: 0, autoAlpha: 1, scale: 1, duration: 0.82, stagger: 0.09 }, "-=0.78")
+          .fromTo("[data-architecture-mark]", { scale: 0.64, autoAlpha: 0, rotation: -12 }, { scale: 1, autoAlpha: 1, rotation: 0, duration: 0.72 }, "-=0.56");
+      }
+
+      heroTimeline
         .fromTo(".hero-rail span", { scaleX: 0 }, { scaleX: 0.08, duration: 0.7 }, "-=0.54");
 
-      if (wide) {
-        ScrollTrigger.create({
-          id: "renderbyte-hero",
-          trigger: "#inicio",
-          start: "top top",
-          end: "bottom bottom",
-          scrub: 0.45,
-          invalidateOnRefresh: true,
-          onUpdate(self) {
-            const index = Math.min(heroWords.length - 1, Math.floor(self.progress * heroWords.length));
-            heroWords.forEach((word, wordIndex) => word.classList.toggle("is-active", wordIndex === index));
-            architectureLayers.forEach((layer, layerIndex) => layer.classList.toggle("is-active", layerIndex === index));
-            gsap.set(architectureStage, { y: self.progress * -18 });
-            gsap.set(architectureMark, { rotation: self.progress * 8, scale: 1 + self.progress * 0.04 });
-            gsap.set(".hero-rail span", { scaleX: Math.max(0.08, self.progress) });
-          }
-        });
-      }
+      // Hero scroll pinning: both desktop and mobile stay pinned while cycling
+      // the three words (atrae -> vende -> ordena), and only then release scroll to the page.
+      const heroDistance = mobile
+        ? Math.round(window.innerHeight * 1.15)
+        : Math.round(window.innerHeight * 1.4);
 
-      // Mobile: replace the desktop pinned hero with a short scroll-led transition.
-      if (mobile) {
-        ScrollTrigger.create({
-          id: "renderbyte-mobile-hero",
-          trigger: "#inicio",
-          start: "top top",
-          end: "bottom bottom",
-          scrub: 0.35,
-          invalidateOnRefresh: true,
-          onUpdate(self) {
-            const index = self.progress <= 0
-              ? 0
-              : Math.min(heroWords.length - 1, Math.ceil(self.progress * (heroWords.length - 1)));
-            heroWords.forEach((word, wordIndex) => word.classList.toggle("is-active", wordIndex === index));
-            architectureLayers.forEach((layer, layerIndex) => layer.classList.toggle("is-active", layerIndex === index));
-            gsap.set(architectureStage, { y: self.progress * -12 });
-            gsap.set(architectureMark, { rotation: self.progress * 6, scale: 1 + self.progress * 0.03 });
-            gsap.set(".hero-rail span", { scaleX: Math.max(0.08, self.progress) });
-          }
-        });
-      }
+      ScrollTrigger.create({
+        id: "renderbyte-hero",
+        trigger: "#inicio",
+        start: "top top",
+        end: () => `+=${heroDistance}`,
+        pin: "#inicio",
+        pinSpacing: true,
+        scrub: mobile ? 0.3 : 0.45,
+        invalidateOnRefresh: true,
+        onUpdate(self) {
+          const index = Math.min(heroWords.length - 1, Math.floor(self.progress * heroWords.length));
+          heroWords.forEach((word, wordIndex) => word.classList.toggle("is-active", wordIndex === index));
+          architectureLayers.forEach((layer, layerIndex) => layer.classList.toggle("is-active", layerIndex === index));
+          if (heroButton) heroButton.dataset.heroStage = String(index);
+          if (architectureStage) gsap.set(architectureStage, { y: self.progress * (mobile ? -10 : -18) });
+          if (architectureMark) gsap.set(architectureMark, { rotation: self.progress * (mobile ? 6 : 8), scale: 1 + self.progress * 0.04 });
+          gsap.set(".hero-rail span", { scaleX: Math.max(0.08, self.progress) });
+        }
+      });
 
       if (clientMarquee && clientTrack) {
         const marqueeTween = gsap.to(clientTrack, { xPercent: -50, duration: 30, ease: "none", repeat: -1, paused: true });
@@ -151,24 +143,31 @@
         cleanup.push(() => document.removeEventListener("visibilitychange", handleVisibility));
       }
 
-      // Process: pin only on wide desktops; tablets keep a readable static flow.
-      if (wide) {
+      // Process: pinned interactive showcase for both desktop and mobile.
+      if (processSteps.length) {
         gsap.set(artifactPaths, { strokeDashoffset: 1 });
         gsap.set(artifactNodes, { scale: 0.72, autoAlpha: 0.22 });
+
+        const processDistance = mobile
+          ? Math.round(window.innerHeight * 1.5)
+          : 2200;
+
         ScrollTrigger.create({
           id: "renderbyte-process",
           trigger: "#proceso",
           start: "top top",
-          end: "+=2400",
+          end: () => `+=${processDistance}`,
           pin: "[data-process-pin]",
-          scrub: 0.7,
+          pinSpacing: true,
+          scrub: mobile ? 0.45 : 0.7,
           invalidateOnRefresh: true,
           onUpdate(self) {
             const index = Math.min(processSteps.length - 1, Math.floor(self.progress * processSteps.length));
             processSteps.forEach((step, stepIndex) => step.classList.toggle("is-active", stepIndex === index));
             processArtifact.dataset.stage = String(index);
-            processCode.textContent = processSteps[index].dataset.code;
-            processProgress.textContent = `${String(index + 1).padStart(2, "0")} / 04`;
+            if (processCode) processCode.textContent = processSteps[index].dataset.code;
+            if (processProgress) processProgress.textContent = `${String(index + 1).padStart(2, "0")} / 04`;
+
             const drawingProgress = self.progress * (artifactPaths.length + 2);
             artifactPaths.forEach((path, pathIndex) => {
               gsap.set(path, { strokeDashoffset: 1 - gsap.utils.clamp(0, 1, drawingProgress - pathIndex) });
@@ -177,51 +176,73 @@
               const nodeProgress = gsap.utils.clamp(0, 1, self.progress * 4 - nodeIndex * 0.72);
               gsap.set(node, { scale: 0.72 + nodeProgress * 0.28, autoAlpha: 0.22 + nodeProgress * 0.78 });
             });
-            gsap.set(artifactScan, { y: self.progress * 278 });
-            gsap.set(processAtmosphere, { y: 160 - self.progress * 320 });
-            gsap.set(processMeter, { scaleX: Math.max(0.05, self.progress) });
+            if (artifactScan) gsap.set(artifactScan, { y: self.progress * (mobile ? 180 : 278) });
+            if (processAtmosphere) gsap.set(processAtmosphere, { y: 160 - self.progress * 320 });
+            if (processMeter) gsap.set(processMeter, { scaleX: Math.max(0.05, self.progress) });
           }
         });
       }
 
-      if (mobile && processSteps.length) {
-        gsap.set(artifactPaths, { strokeDashoffset: 1 });
-        gsap.set(artifactNodes, { scale: 0.72, autoAlpha: 0.22 });
-        ScrollTrigger.batch(processSteps, {
-          start: "top 68%",
-          end: "bottom 38%",
-          interval: 0.05,
-          batchMax: 1,
-          onEnter: (steps) => activateMobileProcessStep(steps[0]),
-          onEnterBack: (steps) => activateMobileProcessStep(steps[0])
+      // Portfolio: mobile has horizontal scroll with cards entering from right to left;
+      // desktop keeps the 12-column grid with staggered vertical scroll reveals.
+      const caseGrid = document.querySelector(".case-grid");
+      const caseCards = gsap.utils.toArray("#portfolio .case");
+
+      if (mobile && caseGrid && caseCards.length) {
+        gsap.set(caseCards, { autoAlpha: 1, y: 0, clearProps: "opacity,visibility,transform" });
+
+        const getTravelDistance = () => Math.max(0, caseGrid.scrollWidth - window.innerWidth + 40);
+
+        gsap.to(caseGrid, {
+          x: () => -getTravelDistance(),
+          ease: "none",
+          scrollTrigger: {
+            id: "renderbyte-portfolio",
+            trigger: "#portfolio",
+            start: "top top",
+            end: () => `+=${Math.round(window.innerHeight * 2.8)}`,
+            pin: "#portfolio",
+            pinSpacing: true,
+            scrub: 0.45,
+            invalidateOnRefresh: true
+          }
         });
 
-        function activateMobileProcessStep(step) {
-          const index = processSteps.indexOf(step);
-          if (index < 0) return;
-          processSteps.forEach((item, itemIndex) => item.classList.toggle("is-active", itemIndex === index));
-          processArtifact.dataset.stage = String(index);
-          processCode.textContent = step.dataset.code;
-          processProgress.textContent = `${String(index + 1).padStart(2, "0")} / 04`;
-          const drawingProgress = ((index + 1) / processSteps.length) * (artifactPaths.length + 2);
-          artifactPaths.forEach((path, pathIndex) => gsap.to(path, { strokeDashoffset: 1 - gsap.utils.clamp(0, 1, drawingProgress - pathIndex), duration: 0.35, overwrite: true }));
-          artifactNodes.forEach((node, nodeIndex) => {
-            const progress = gsap.utils.clamp(0, 1, (index + 1) / processSteps.length * 4 - nodeIndex * 0.72);
-            gsap.to(node, { scale: 0.72 + progress * 0.28, autoAlpha: 0.22 + progress * 0.78, duration: 0.3, overwrite: true });
-          });
-          gsap.to(processMeter, { scaleX: (index + 1) / processSteps.length, duration: 0.3, overwrite: true });
-        }
-      }
+        // Allow fluid horizontal swipe navigation alongside vertical scrolling
+        let touchStartX = 0;
+        let touchStartY = 0;
+        const onTouchStart = (e) => {
+          if (!e.touches.length) return;
+          touchStartX = e.touches[0].clientX;
+          touchStartY = e.touches[0].clientY;
+        };
+        const onTouchMove = (e) => {
+          if (!e.touches.length) return;
+          const dx = touchStartX - e.touches[0].clientX;
+          const dy = touchStartY - e.touches[0].clientY;
+          if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 10) {
+            window.scrollBy(0, dx * 1.15);
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+          }
+        };
 
-      // Portfolio reveals are batched to avoid many simultaneous scroll callbacks.
-      gsap.set("[data-reveal]", { autoAlpha: 0, y: 34 });
-      ScrollTrigger.batch("[data-reveal]", {
-        start: "top 88%",
-        once: true,
-        interval: 0.08,
-        batchMax: desktop ? 3 : 1,
-        onEnter: (items) => gsap.to(items, { autoAlpha: 1, y: 0, duration: 0.72, stagger: 0.08, ease: "expo.out", overwrite: true })
-      });
+        caseGrid.addEventListener("touchstart", onTouchStart, { passive: true });
+        caseGrid.addEventListener("touchmove", onTouchMove, { passive: true });
+        cleanup.push(() => {
+          caseGrid.removeEventListener("touchstart", onTouchStart);
+          caseGrid.removeEventListener("touchmove", onTouchMove);
+        });
+      } else {
+        gsap.set("[data-reveal]", { autoAlpha: 0, y: 34 });
+        ScrollTrigger.batch("[data-reveal]", {
+          start: "top 88%",
+          once: true,
+          interval: 0.08,
+          batchMax: 3,
+          onEnter: (items) => gsap.to(items, { autoAlpha: 1, y: 0, duration: 0.72, stagger: 0.08, ease: "expo.out", overwrite: true })
+        });
+      }
 
       // Pointer response reuses quickTo tweens instead of allocating on every move.
       if (finePointer) {
